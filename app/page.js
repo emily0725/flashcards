@@ -1,12 +1,38 @@
 'use client'
 import Image from "next/image";
 import getStripe from "@/utils/get-stripe";
-import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
-import { AppBar, Toolbar, Typography, Button, Container, Box, Grid } from "@mui/material";
+import { SignedIn, SignedOut, UserButton, useUser } from "@clerk/nextjs";
+import { AppBar, Toolbar, Typography, Button, Container, Box, Grid, Menu, MenuItem } from "@mui/material";
 import Head from "next/head";
-
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
+  const router = useRouter();
+  const { isSignedIn } = useUser();
+
+  const handleMenuClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleNavigate = (path) => {
+    if (path === '/flashcards' && !isSignedIn) {
+      router.push('/sign-in');
+    } else {
+      router.push(path);
+    }
+    handleMenuClose(); 
+  };
+
+  const handleRedirectToHome = () => {
+    router.push('/'); 
+  };
 
   const handleSubmit = async () => {
     const checkoutSession = await fetch('/api/checkout_session', {
@@ -14,34 +40,41 @@ export default function Home() {
       headers: {
         origin: 'http://localhost:3000'
       },
-    })
+    });
 
-    const checkoutSessionJson = await checkoutSession.json()
+    const checkoutSessionJson = await checkoutSession.json();
 
     if (checkoutSession.statusCode === 500) {
-      console.error(checkoutSession.message)
-      return
+      console.error(checkoutSession.message);
+      return;
     }
 
-    const stripe = await getStripe()
-    const {error} = await stripe.redirectToCheckout({
+    const stripe = await getStripe();
+    const { error } = await stripe.redirectToCheckout({
       sessionId: checkoutSessionJson.id,
-    })
+    });
 
     if (error) {
-      console.warn(error.message)
+      console.warn(error.message);
     }
-  }
+  };
+
   return (
     <Container maxWidth="100vw">
       <Head>
-        <title>Flashcard</title>
-        <meta name = "description" content='Create flashcard from your text'/>
+        <title>Quizify</title>
+        <meta name="description" content='Create flashcard from your text'/>
       </Head>
 
-      <AppBar position = "static">
+      <AppBar position="static">
         <Toolbar>
-          <Typography variant = "h6" style={{flexGrow: 1}}>Flashcard</Typography>
+          <Typography 
+            variant="h6" 
+            style={{ flexGrow: 1, cursor: 'pointer' }} 
+            onClick={handleRedirectToHome}
+          >
+            Quizify
+          </Typography>
           <SignedOut>
             <Button color="inherit" href="/sign-in">
               {''}
@@ -58,39 +91,53 @@ export default function Home() {
       </AppBar>
 
       <Box 
-        sx= {{
+        sx={{
           textAlign: 'center',
           my: 4,
         }}
       >
-        <Typography variant = "h2" gutterBottom>
-          Welcome to Flashcard
+        <Typography variant="h2" gutterBottom sx={{mt: 10}}>
+          Welcome to Quizify
         </Typography>
-        <Typography variant = "h5" gutterBottom>
+        <Typography variant="h5" gutterBottom>
           {''}
           The easiest way to make flashcards from your text
         </Typography>
-        <Button variant='contained' color = 'primary' sx = {{mt: 2}}>
+        <Button 
+          variant='contained' 
+          color='primary' 
+          sx={{ mt: 3 }} 
+          onClick={handleMenuClick}
+        >
           Get Started
         </Button>
+        <Menu
+          anchorEl={anchorEl}
+          open={open}
+          onClose={handleMenuClose}
+          sx={{ mt: '45px' }} 
+        >
+          <MenuItem onClick={() => handleNavigate('/generate')}>Create</MenuItem>
+          <MenuItem onClick={() => handleNavigate('/flashcards')}>Study History</MenuItem>
+        </Menu>
       </Box>
-      <Box sx = {{my: 6}}>
+      <Box sx={{ my: 6, textAlign: 'center' }}>
         <Typography variant="h4" gutterBottom>
           Features
         </Typography> 
         <Grid container spacing={4}>   
-          <Grid item xs={12} md={4}>
-            <Typography variant = "h6" gutterBottom>
+          <Grid item xs={12} md={4} sx={{mt: 3}}>
+            <Typography variant="h6" gutterBottom>
               Easy Text Input
             </Typography>
             <Typography> 
               {''}
               Simply input your text and let our software do the rest. Creating 
-            flashcards has never been easier.
+              flashcards has never been easier.
             </Typography>
           </Grid> 
-          <Grid item xs={12} md={4}>
-            <Typography variant = "h6">
+          <Grid item xs={12} md={4} sx={{mt: 3}}>
+            <Typography variant="h6" gutterBottom>
               Smart Flashcards
             </Typography>
             <Typography> 
@@ -99,8 +146,8 @@ export default function Home() {
               flashcards, perfect for studying.
             </Typography>
           </Grid> 
-          <Grid item xs={12} md={4}>
-            <Typography variant = "h6" gutterBottom>
+          <Grid item xs={12} md={4} sx={{mt: 3}}>
+            <Typography variant="h6" gutterBottom>
               Accessible Anywhere
             </Typography>
             <Typography> 
@@ -110,62 +157,6 @@ export default function Home() {
           </Grid> 
         </Grid>
       </Box>
-      <Box sx={{my:6, textAlign: 'center'}}>
-        <Typography variant="h4" gutterBottom>
-          Pricing
-        </Typography>
-        <Grid container spacing={4}>   
-          <Grid item xs={12} md={6}> 
-            <Box 
-              sx={{
-                p:3,
-                border: '1px solid',
-                borderColor: 'grey.300',
-                borderRadius: 2,
-              }}
-            >
-              
-              <Typography variant = "h5" gutterBottom>
-                Basic
-              </Typography>
-              <Typography variant = "h6" gutterBottom>
-                $5 / month
-              </Typography>
-              <Typography> 
-                {''}
-                Access to basic flashcard features and limited storage.
-              </Typography>
-              <Button variant="contained" color="primary" sx={{mt: 2}}>
-                Choose basic
-                </Button>
-            </Box>
-          </Grid> 
-          <Grid item xs={12} md={6}> 
-            <Box 
-              sx={{
-                p:3,
-                border: '1px solid',
-                borderColor: 'grey.300',
-                borderRadius: 2,
-              }}
-            >
-              <Typography variant = "h5" gutterBottom>
-                Pro
-              </Typography>
-              <Typography variant = "h6" gutterBottom>
-                $10 / month
-              </Typography>
-              <Typography> 
-                {''}
-                Unlimited flashcards and storage, with priority support.
-              </Typography>
-              <Button variant="contained" color="primary" sx={{mt: 2}} onClick={handleSubmit}>
-                Choose Pro
-                </Button>
-            </Box>
-          </Grid> 
-        </Grid>
-      </Box>
     </Container>
-  )
+  );
 }

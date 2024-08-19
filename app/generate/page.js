@@ -1,20 +1,28 @@
 'use client'
 
-import { useUser } from "@clerk/nextjs"
+import { useUser } from "@clerk/nextjs";
 import { db } from "@/firebase";
 import { Container, Box, Typography, Paper, TextField, Button, CardActionArea, DialogContent, Dialog, DialogTitle, DialogContentText, DialogActions, Grid, CardContent } from '@mui/material';
-import { writeBatch, doc, collection, getDoc,} from 'firebase/firestore'
-import { useRouter } from "next/navigation"
-import { useState } from 'react';
+import { writeBatch, doc, collection, getDoc } from 'firebase/firestore';
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from 'react';
 
 export default function Generate() {
-  const { isLoaded, isSignedIn, user } = useUser()
-  const [flashcards, setFlashcards] = useState([])
-  const [flipped, setFlipped] = useState({})
-  const [text, setText] = useState('')
-  const [name, setName] = useState('')
-  const [open, setOpen] = useState(false)
-  const router = useRouter()
+  const { isLoaded, isSignedIn, user } = useUser();
+  const [flashcards, setFlashcards] = useState([]);
+  const [flipped, setFlipped] = useState({});
+  const [text, setText] = useState('');
+  const [name, setName] = useState('');
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    if (!isSignedIn) {
+      router.push('/sign-in'); // Redirect to sign-in page if user is not signed in
+    }
+  }, [isLoaded, isSignedIn, router]);
 
   const handleSubmit = async () => {
     fetch('/api/generate', {
@@ -22,57 +30,62 @@ export default function Generate() {
       body: text,
     })
     .then((res) => res.json())
-    .then((data) => setFlashcards(data))
-  }
+    .then((data) => setFlashcards(data));
+  };
 
   const handleCardClick = (id) => {
     setFlipped((prev) => ({
       ...prev,
       [id]: !prev[id],
-    }))
-  }
+    }));
+  };
 
   const handleOpen = () => {
-    setOpen(true)
-  }
+    setOpen(true);
+  };
   
   const handleClose = () => {
-    setOpen(false)
-  }
+    setOpen(false);
+  };
 
   const saveFlashCards = async () => {
     if (!name) {
-      alert('Please enter a name')
-      return 
+      alert('Please enter a name');
+      return;
     }
 
-    const batch = writeBatch(db)
-    const userDocRef = doc(collection(db, 'users'), user.id)
-    const docSnap = await getDoc(userDocRef)
+    if (!user) {
+      alert('User is not authenticated');
+      return;
+    }
+
+    const batch = writeBatch(db);
+    const userDocRef = doc(collection(db, 'users'), user.id);
+    const docSnap = await getDoc(userDocRef);
 
     if (docSnap.exists()) {
-      const collections = docSnap.data().flashcards || []
+      const collections = docSnap.data().flashcards || [];
       if (collections.find((f) => f.name === name)) {
-        alert('Flashcard collection with the same name already exists.')
-        return
+        alert('Flashcard collection with the same name already exists.');
+        return;
       } else {
-        collections.push({ name })
-        batch.set(userDocRef, { flashcards: collections }, { merge: true })
+        collections.push({ name });
+        batch.set(userDocRef, { flashcards: collections }, { merge: true });
       }
     } else {
-      batch.set(userDocRef, { flashcards: [{ name }] })
+      batch.set(userDocRef, { flashcards: [{ name }] });
     }
 
-    const colRef = collection(userDocRef, name)
+    const colRef = collection(userDocRef, name);
     flashcards.forEach((flashcard) => {
-      const cardDocRef = doc(colRef)
-      batch.set(cardDocRef, flashcard)
-    })
+      const cardDocRef = doc(colRef);
+      batch.set(cardDocRef, flashcard);
+    });
 
-    await batch.commit()
-    handleClose()
-    router.push('/flashcards')
-  }
+    await batch.commit();
+    handleClose();
+    router.push('/flashcards');
+  };
 
   return (
     <Container maxWidth="md">
@@ -104,15 +117,13 @@ export default function Generate() {
         </Paper>
       </Box>
 
-      {flashcards.length > 0 &&(
-        <Box sx={{mt: 4}}>
+      {flashcards.length > 0 && (
+        <Box sx={{ mt: 4 }}>
           <Typography variant="h5">Flashcards Preview</Typography>
           <Grid container spacing={3}>
             {flashcards.map((flashcard, index) => (
               <Grid item xs={12} sm={6} md={4} key={index}>
-                <CardActionArea 
-                  onClick={() => handleCardClick(index)}
-                > 
+                <CardActionArea onClick={() => handleCardClick(index)}>
                   <CardContent>
                     <Box sx={{
                       perspective: '1000px',
@@ -144,20 +155,12 @@ export default function Generate() {
                     }}>
                       <div>
                         <div>
-                          <Typography 
-                            variant="h5" 
-                            component="div" 
-                            sx={{ padding: '16px' }}
-                          >
+                          <Typography variant="h5" component="div" sx={{ padding: '16px' }}>
                             {flashcard.front}
                           </Typography>
                         </div>
                         <div>
-                          <Typography 
-                            variant="h5" 
-                            component="div" 
-                            sx={{ padding: '16px' }}
-                          >
+                          <Typography variant="h5" component="div" sx={{ padding: '16px' }}>
                             {flashcard.back}
                           </Typography>
                         </div>
@@ -168,13 +171,13 @@ export default function Generate() {
               </Grid>
             ))}
           </Grid>
-          <Box sx={{mt: 4, display: 'flex', justifyContent: 'center'}}>
+          <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
             <Button variant='contained' color='secondary' onClick={handleOpen}>
               Save
             </Button>
           </Box>
         </Box>
-      )} 
+      )}
 
       <Dialog open={open} onClose={handleClose}>
         <DialogTitle>Save Flashcard</DialogTitle>
@@ -199,5 +202,5 @@ export default function Generate() {
         </DialogActions>
       </Dialog>
     </Container>
-  )
+  );
 }

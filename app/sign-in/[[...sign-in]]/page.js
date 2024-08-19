@@ -10,8 +10,10 @@ export default function SignUpPage() {
           <Typography 
             variant="h6" 
             sx={{ flexGrow: 1 }}
-          > 
-            Flashcard
+          >
+            <Link href="/" passHref>
+              Quizify
+            </Link>
           </Typography>
           <Button color='inherit'>
             <Link href="/sign-in" passHref>
